@@ -7,6 +7,7 @@ const sandbox = require('sinon').createSandbox();
 const MarketplaceTx = require('../src/marketplace-tx');
 const nonce = require('../src/support/nonce');
 const tx = require('../src/support/tx');
+const sender = require('../src/support/sender');
 
 const { expect } = chai;
 chai.use(require('chai-as-promised'));
@@ -29,8 +30,6 @@ describe('sender.js', () => {
 
       return Array.isArray(toSign) ? Promise.all(toSign.map(sign)) : sign(toSign);
     };
-
-    const { sender } = marketplaceTx;
 
     before(() => {
       // Whenever nonce is required return default one

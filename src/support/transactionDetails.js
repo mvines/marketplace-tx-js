@@ -16,8 +16,12 @@ const formatResult = (status, details) => ({ status, details });
  * @returns {Promise<object>}
  */
 transactionDetails.getTransaction = function(fromAddress, txHash) {
-  return new Promise((resolve, reject) =>
-    tx.getTransactionReceipt(txHash).then(receipt => {
+  return new Promise((resolve, reject) => {
+    if (!tx.web3) {
+      return reject(new Error('web3 not available'));
+    }
+
+    return tx.getTransactionReceipt(txHash).then(receipt => {
       if (receipt) {
         // The transaction hash was found via getTransactionReceipt and therefore has been mined
         resolve(formatResult(TX_STATUS.MINED, receipt));
@@ -38,8 +42,8 @@ transactionDetails.getTransaction = function(fromAddress, txHash) {
           return resolve(foundTransaction || formatResult(TX_STATUS.UNKNOWN, null));
         });
       }
-    })
-  );
+    });
+  });
 };
 
 /**
@@ -50,7 +54,10 @@ transactionDetails.getTransaction = function(fromAddress, txHash) {
  */
 transactionDetails.getTransactionStatus = function(fromAddress, nonce) {
   return new Promise((resolve, reject) => {
-    tx.web3.txpool.inspect((error, result) => {
+    if (!tx.web3) {
+      return reject(new Error('web3 not available'));
+    }
+    return tx.web3.txpool.inspect((error, result) => {
       if (error) {
         if (error.message.includes('Method txpool_inspect not supported.')) {
           return resolve(TX_STATUS.UNSUPPORTED);

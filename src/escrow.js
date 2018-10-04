@@ -21,8 +21,7 @@ module.exports = escrow;
  */
 
 const _ = require('lodash');
-const tx = require('./support/tx');
-const sender = require('./support/sender');
+const { blockchain } = require('./support/blockchain');
 const { toCVC } = require('./token');
 const { CVC_DECIMALS, CONTRACT_TOKEN, CONTRACT_ESCROW } = require('./support/constants');
 const logger = require('./logger/index');
@@ -44,7 +43,8 @@ const REFUND_GAS_LIMIT = 100000;
  * If the sourceAddress has pre-approved, but the amount is not sufficient, then we need to first drop the allowance
  * to zero (https://github.com/ethereum/EIPs/issues/20#issuecomment-263524729) and then make an approve transaction.
  *
- * @param {object} contracts An object containing CvcEscrow & CvcToken contracts
+ * @param {object} cvcToken An object containing the CvcToken contract
+ * @param {object} cvcEscrow An object containing the CvcEscrow contract
  * @param {string} sourceAddress The address of the account making the escrow placement
  * @param {string} recipientAddress The recipientAddress of the escrow payment (once released)
  * @param {Array<string>}  scopeRequestIds The scope request IDs to which the escrow payment refers
@@ -53,14 +53,15 @@ const REFUND_GAS_LIMIT = 100000;
  * @return {Array} The transactions that need to be executed (in sequence) in order to make escrow placement
  */
 const createEscrowPlaceTransactions = (
-  contracts,
+  cvcToken,
+  cvcEscrow,
   sourceAddress,
   recipientAddress,
   scopeRequestIds,
   amount,
   credentialItems
 ) => {
-  const allowancePromise = contracts.CvcToken.allowance(sourceAddress, contracts.CvcEscrow.address);
+  const allowancePromise = cvcToken.allowance(sourceAddress, cvcEscrow.address);
 
   /**
    * @description Creates a set of CVC approve transactions to ensure the batch placements can be successfully made.
@@ -82,7 +83,7 @@ const createEscrowPlaceTransactions = (
   const approveTransactions = allowance => {
     logger.debug('approveTransactions current allowance', {
       allowance,
-      contractAddress: contracts.CvcEscrow.address,
+      contractAddress: cvcEscrow.address,
       sourceAddress,
       scopeRequestIds
     });
@@ -94,7 +95,7 @@ const createEscrowPlaceTransactions = (
       approvalTransactions.push({
         contract: CONTRACT_TOKEN,
         method: 'approve',
-        args: [contracts.CvcEscrow.address, amount]
+        args: [cvcEscrow.address, amount]
       });
     } else if (allowance.lt(amount)) {
       // fromAddress has approved CVC to the escrow contract, but it is not sufficient for the escrow payment.
@@ -104,12 +105,12 @@ const createEscrowPlaceTransactions = (
       approvalTransactions.push({
         contract: CONTRACT_TOKEN,
         method: 'approve',
-        args: [contracts.CvcEscrow.address, 0]
+        args: [cvcEscrow.address, 0]
       });
       approvalTransactions.push({
         contract: CONTRACT_TOKEN,
         method: 'approve',
-        args: [contracts.CvcEscrow.address, amount]
+        args: [cvcEscrow.address, amount]
       });
     } // else allowance >= amount - we have enough for the batch escrow placements
 
@@ -241,11 +242,12 @@ escrow.placeBatch = function(
   });
 
   return Promise.all([
-    tx.contractInstances(CONTRACT_TOKEN, CONTRACT_ESCROW),
+    blockchain.contractInstance(CONTRACT_TOKEN),
+    blockchain.contractInstance(CONTRACT_ESCROW),
     Promise.all(credentialItems.map(ontology.parseExternalId).map(args => ontology.getIdByTypeNameVersion(...args)))
   ])
-    .then(([contracts, internalIds]) =>
-      createEscrowPlaceTransactions(contracts, fromAddress, idvAddress, normalizedIds, amount, internalIds)
+    .then(([cvcToken, cvcEscrow, internalIds]) =>
+      createEscrowPlaceTransactions(cvcToken, cvcEscrow, fromAddress, idvAddress, normalizedIds, amount, internalIds)
     )
     .then(transactions => {
       if (transactions && transactions.length > 1) {
@@ -256,7 +258,7 @@ escrow.placeBatch = function(
           scopeRequestIds
         });
       }
-      return sender.sendChain({
+      return blockchain.sendChain({
         fromAddress,
         signTx,
         transactions,
@@ -337,7 +339,7 @@ escrow.releaseBatch = function(
     updatedTxOptions
   });
 
-  return sender
+  return blockchain
     .send({
       fromAddress: assertAddress(fromAddress),
       signTx,
@@ -383,7 +385,7 @@ escrow.verifyBatch = function(idrAddress, idvAddress, scopeRequestIds) {
   assertAddress(idvAddress);
   const normalizedIds = scopeRequestIds.map(normalizeScopeRequestId);
 
-  return tx
+  return blockchain
     .contractInstance(CONTRACT_ESCROW)
     .then(
       logger.debugLogTap('Verifying escrow payment: ', {
@@ -409,7 +411,7 @@ escrow.verifyBatch = function(idrAddress, idvAddress, scopeRequestIds) {
  * @returns {PlacementDetails} - A promise of the escrow placement details.
  */
 escrow.verifyPlacement = function(placementId) {
-  return tx
+  return blockchain
     .contractInstance(CONTRACT_ESCROW)
     .then(logger.debugLogTap('Verifying placement: ', { placementId }))
     .then(escrowContract => escrowContract.verifyPlacement(placementId));
@@ -467,7 +469,7 @@ escrow.refundBatch = function(fromAddress, signTx, idrAddress, idvAddress, scope
     txOptions: updatedTxOptions
   });
 
-  return sender.send({
+  return blockchain.send({
     fromAddress: assertAddress(fromAddress),
     signTx,
     contractName: CONTRACT_ESCROW,
@@ -493,7 +495,7 @@ escrow.setTimeoutThreshold = function(fromAddress, signTx, threshold) {
     fromAddress,
     threshold
   });
-  return sender.send({
+  return blockchain.send({
     fromAddress: assertAddress(fromAddress),
     signTx,
     contractName: CONTRACT_ESCROW,
@@ -509,7 +511,7 @@ escrow.setTimeoutThreshold = function(fromAddress, signTx, threshold) {
  * @return {Promise<number>} A promise of the timeout threshold value.
  */
 escrow.timeoutThreshold = function() {
-  return tx.contractInstance(CONTRACT_ESCROW).then(escrowContract => escrowContract.timeoutThreshold());
+  return blockchain.contractInstance(CONTRACT_ESCROW).then(escrowContract => escrowContract.timeoutThreshold());
 };
 
 /**
@@ -528,7 +530,7 @@ escrow.setFeeRate = function(fromAddress, signTx, feeRate) {
     fromAddress,
     feeRate
   });
-  return sender.send({
+  return blockchain.send({
     fromAddress: assertAddress(fromAddress),
     signTx,
     contractName: CONTRACT_ESCROW,
@@ -548,7 +550,7 @@ escrow.setFeeRate = function(fromAddress, signTx, feeRate) {
  * @return {string} A promise of the escrow placement ID.
  */
 escrow.calculatePlacementId = function(idrAddress, idvAddress, scopeRequestIds) {
-  return tx
+  return blockchain
     .contractInstance(CONTRACT_ESCROW)
     .then(logger.debugLogTap('Calculating placementId: ', { idrAddress, idvAddress, scopeRequestIds }))
     .then(escrowContract => escrowContract.calculatePlacementId(idrAddress, idvAddress, scopeRequestIds));

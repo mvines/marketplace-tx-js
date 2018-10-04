@@ -3,6 +3,7 @@ const asserts = {};
 module.exports = asserts;
 
 const { TOTAL_SUPPLY, CREDENTIAL_ITEM_TYPES } = require('./constants');
+const { blockchain } = require('./blockchain');
 
 /**
  * @alias module:support/asserts.assertAmount
@@ -56,13 +57,7 @@ asserts.assertCredentialItemPrice = price => {
  * @param {string} addressToTest
  * @returns {string}
  */
-asserts.assertAddress = addressToTest => {
-  if (!asserts.web3.isAddress(addressToTest)) {
-    throw new Error(`Address (${addressToTest}) is not a valid ETH address`);
-  }
-
-  return addressToTest;
-};
+asserts.assertAddress = addressToTest => blockchain.isAddress(addressToTest);
 
 /**
  * @alias module:support/asserts.assertCredentialItemType

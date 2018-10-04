@@ -27,8 +27,7 @@
 const ontology = {};
 module.exports = ontology;
 
-const tx = require('./support/tx');
-const sender = require('./support/sender');
+const { blockchain } = require('./support/blockchain');
 const { assertCredentialItemType, assertAddress } = require('./support/asserts');
 const { CONTRACT_ONTOLOGY } = require('./support/constants');
 const { NotFoundError } = require('./support/errors');
@@ -78,7 +77,7 @@ const assertNotEmpty = record => {
  * @return {Promise<CredentialItem>}
  */
 ontology.getById = function(id) {
-  return tx
+  return blockchain
     .contractInstance(CONTRACT_ONTOLOGY)
     .then(instance => instance.getById(id))
     .then(assertNotEmpty)
@@ -96,7 +95,7 @@ ontology.getById = function(id) {
  * @return {Promise<CredentialItem>}
  */
 ontology.getByTypeNameVersion = function(type, name, version) {
-  return tx
+  return blockchain
     .contractInstance(CONTRACT_ONTOLOGY)
     .then(instance => instance.getByTypeNameVersion(type, name, version))
     .then(assertNotEmpty)
@@ -114,7 +113,7 @@ ontology.getByTypeNameVersion = function(type, name, version) {
  * @return {Promise<String>}
  */
 ontology.getIdByTypeNameVersion = function(type, name, version) {
-  return tx
+  return blockchain
     .contractInstance(CONTRACT_ONTOLOGY)
     .then(instance => instance.getByTypeNameVersion(type, name, version))
     .then(assertNotEmpty)
@@ -128,7 +127,7 @@ ontology.getIdByTypeNameVersion = function(type, name, version) {
  * @return {Promise<Array>}
  */
 ontology.getAll = function() {
-  return tx
+  return blockchain
     .contractInstance(CONTRACT_ONTOLOGY)
     .then(instance =>
       instance.getAllIds().then(ids => Promise.all(ids.map(id => instance.getById(id).then(mapCredentialItemRecord))))
@@ -159,7 +158,7 @@ ontology.add = function(fromAddress, signTx, type, name, version, reference, ref
         throw new Error(`Empty argument passed to Ontology.add (${JSON.stringify(args)})`);
       }
     });
-    return sender.send({
+    return blockchain.send({
       fromAddress,
       signTx,
       contractName: CONTRACT_ONTOLOGY,
@@ -187,7 +186,7 @@ ontology.deprecate = function(fromAddress, signTx, type, name, version) {
   try {
     assertAddress(fromAddress);
     const args = [assertCredentialItemType(type), name, version];
-    return sender.send({
+    return blockchain.send({
       fromAddress,
       signTx,
       contractName: CONTRACT_ONTOLOGY,
@@ -211,7 +210,7 @@ ontology.deprecate = function(fromAddress, signTx, type, name, version) {
 ontology.deprecateById = function(fromAddress, signTx, internalId) {
   try {
     assertAddress(fromAddress);
-    return sender.send({
+    return blockchain.send({
       fromAddress,
       signTx,
       contractName: CONTRACT_ONTOLOGY,

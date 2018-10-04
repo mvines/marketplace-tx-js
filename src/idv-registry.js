@@ -8,9 +8,8 @@ module.exports = idvRegistry;
 
 const _ = require('lodash');
 const { assertAddress } = require('./support/asserts');
-const tx = require('./support/tx');
-const sender = require('./support/sender');
 const { CONTRACT_VALIDATOR_REGISTRY } = require('./support/constants');
+const { blockchain } = require('./support/blockchain');
 
 // Default IDV mining gas limit
 const IDV_REGISTRY_SET_GAS_LIMIT = 250000;
@@ -48,7 +47,7 @@ idvRegistry.set = function(fromAddress, signTx, idvAddress, idvName, idvDescript
   const updatedTxOptions = _.merge({}, { gas: IDV_REGISTRY_SET_GAS_LIMIT }, txOptions);
   assertAddress(fromAddress);
   assertAddress(idvAddress);
-  return sender.send({
+  return blockchain.send({
     fromAddress,
     signTx,
     contractName: CONTRACT_VALIDATOR_REGISTRY,
@@ -67,7 +66,7 @@ idvRegistry.set = function(fromAddress, signTx, idvAddress, idvName, idvDescript
  */
 idvRegistry.get = function(idvAddress) {
   assertAddress(idvAddress);
-  return tx
+  return blockchain
     .contractInstance(CONTRACT_VALIDATOR_REGISTRY)
     .then(instance => instance.get(idvAddress))
     .then(assertNotEmpty)
@@ -83,5 +82,5 @@ idvRegistry.get = function(idvAddress) {
  */
 idvRegistry.exists = function(idvAddress) {
   assertAddress(idvAddress);
-  return tx.contractInstance(CONTRACT_VALIDATOR_REGISTRY).then(instance => instance.exists(idvAddress));
+  return blockchain.contractInstance(CONTRACT_VALIDATOR_REGISTRY).then(instance => instance.exists(idvAddress));
 };

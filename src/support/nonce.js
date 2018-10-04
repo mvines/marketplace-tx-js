@@ -108,7 +108,10 @@ Account.prototype.clear = function() {
  */
 function getTransactionCount(address, defaultBlock) {
   return new Promise((resolve, reject) => {
-    nonceManager.web3.eth.getTransactionCount(address, defaultBlock, (error, txCount) => {
+    if (!nonceManager.web3) {
+      return reject(new Error('web3 not available'));
+    }
+    return nonceManager.web3.eth.getTransactionCount(address, defaultBlock, (error, txCount) => {
       if (error) return reject(mapError(error));
       return resolve(txCount);
     });
@@ -122,7 +125,10 @@ function getTransactionCount(address, defaultBlock) {
  */
 function inspectTxPool(address) {
   return new Promise((resolve, reject) => {
-    nonceManager.web3.txpool.inspect((error, result) => {
+    if (!nonceManager.web3) {
+      return reject(new Error('web3 not available'));
+    }
+    return nonceManager.web3.txpool.inspect((error, result) => {
       // handle cases where txpool.inspect is not available
       // we just have to assume there is nothing queued in this case
       if (error) {

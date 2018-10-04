@@ -1,14 +1,13 @@
 const token = {};
 module.exports = token;
 
+const { blockchain } = require('./support/blockchain');
 const Bn = require('bignumber.js');
-const tx = require('./support/tx');
-const sender = require('./support/sender');
 const logger = require('./logger/index');
 const { CONTRACT_TOKEN, ONE_CVC } = require('./support/constants');
 
 token.getBalances = function(users) {
-  return tx.contractInstance(CONTRACT_TOKEN).then(instance => {
+  return blockchain.contractInstance(CONTRACT_TOKEN).then(instance => {
     const promises = users.map(user =>
       instance.balanceOf(user.address).then(value => Object.assign({}, user, { balance: value }))
     );
@@ -17,11 +16,11 @@ token.getBalances = function(users) {
 };
 
 token.getBalance = function(address) {
-  return tx.contractInstance(CONTRACT_TOKEN).then(instance => instance.balanceOf(address));
+  return blockchain.contractInstance(CONTRACT_TOKEN).then(instance => instance.balanceOf(address));
 };
 
 token.transfer = function(fromAddress, signTx, to, value) {
-  return sender
+  return blockchain
     .send({
       fromAddress,
       signTx,
@@ -38,11 +37,11 @@ token.transfer = function(fromAddress, signTx, to, value) {
 token.approveWithReset = function(fromAddress, signTx, spender, value) {
   const promise = new Promise((resolve, reject) => {
     try {
-      tx
+      blockchain
         .call(CONTRACT_TOKEN, 'allowance', [fromAddress, spender])
         .then(amount => {
           if (amount > 0) {
-            return sender.send({
+            return blockchain.send({
               fromAddress,
               signTx,
               contractName: CONTRACT_TOKEN,
@@ -53,7 +52,7 @@ token.approveWithReset = function(fromAddress, signTx, spender, value) {
           return Promise.resolve(true);
         })
         .then(() => {
-          sender
+          blockchain
             .send({
               fromAddress,
               signTx,
@@ -82,11 +81,11 @@ token.approveWithReset = function(fromAddress, signTx, spender, value) {
 };
 
 token.allowance = function(owner, spender) {
-  return tx.contractInstance(CONTRACT_TOKEN).then(instance => instance.allowance(owner, spender));
+  return blockchain.contractInstance(CONTRACT_TOKEN).then(instance => instance.allowance(owner, spender));
 };
 
 token.approve = function(fromAddress, signTx, spender, value) {
-  return sender
+  return blockchain
     .send({
       fromAddress,
       signTx,

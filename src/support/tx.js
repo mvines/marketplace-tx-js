@@ -47,7 +47,6 @@ const truffleContract = require('truffle-contract');
 const _ = require('lodash');
 
 const nonceManager = require('./nonce');
-const { CONTRACTS } = require('./constants');
 const logger = require('../logger/index');
 const { mapError, CvcError, NotDeployedError, NoNetworkInContractError } = require('./errors');
 const config = require('../../config/index')();
@@ -138,7 +137,7 @@ tx.contractInstance = _.memoize(contractName => {
           return contract.at(contractAddress).then(assertCodeAtAddress);
         } catch (e) {
           logger.debug(
-            `Contract '${contractName}' could not be found at configured '${contractAddress}'. 
+            `Contract '${contractName}' could not be found at configured '${contractAddress}'.
             Falling back to autodetect`
           );
           return fallbackToAutodetectDeployedContract(contract, contractName);
@@ -153,30 +152,6 @@ tx.contractInstance = _.memoize(contractName => {
     return Promise.reject(new CvcError(`Error loading contract: ${contractName}`, error));
   }
 });
-
-/**
- * Retrieves a set of contracts by name. This can be used as follows:
- *
- * <pre>
- * const contracts = await contractInstances('CvcPricing', 'CvcEscrow');
- * const contracts.CvcToken.transfer(...)
- * const contracts.CvcEscrow.place(...)
- * </pre>
- *
- * @param {Array<string>} contractNames - The names of the contracts to retrieve.
- * @return {Promise<Object>} A promise of an object of the form { contractName : contractInstance}
- */
-tx.contractInstances = function(...contractNames) {
-  const contractInstancePromises = contractNames.map(tx.contractInstance);
-  return Promise.all(contractInstancePromises).then(contractInstances => _.zipObject(contractNames, contractInstances));
-};
-
-/**
- * Initialises all contracts found in the contracts directory,
- * throwing an error if any are not found on the blockchain.
- * @returns {Promise<Object>} A promise of an object of the form { contractName : contractInstance}
- */
-tx.loadContracts = () => tx.contractInstances(...CONTRACTS);
 
 /**
  * Return latest known block number from the current network.

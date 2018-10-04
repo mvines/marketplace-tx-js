@@ -29,9 +29,8 @@ module.exports = pricing;
 
 const { assertAddress, assertCredentialItemPrice } = require('./support/asserts');
 const { CONTRACT_PRICING } = require('./support/constants');
-const tx = require('./support/tx');
-const sender = require('./support/sender');
 const { NotFoundError } = require('./support/errors');
+const { blockchain } = require('./support/blockchain');
 
 /**
  * Maps an array with price data and returns the price object with corresponding properties.
@@ -81,7 +80,7 @@ const checkPriceIsSet = function(credentialItemPrice) {
  */
 pricing.getPrice = function(idv, type, name, version) {
   assertAddress(idv);
-  return tx
+  return blockchain
     .contractInstance(CONTRACT_PRICING)
     .then(instance => instance.getPrice(idv, type, name, version))
     .then(mapCredentialItemPrice)
@@ -95,7 +94,7 @@ pricing.getPrice = function(idv, type, name, version) {
  * @return {Promise<array>}
  */
 pricing.getAllPrices = function() {
-  return tx
+  return blockchain
     .contractInstance(CONTRACT_PRICING)
     .then(instance =>
       instance
@@ -120,7 +119,7 @@ pricing.getAllPrices = function() {
 pricing.setPrice = function(fromAddress, signTx, type, name, version, price) {
   assertAddress(fromAddress);
   assertCredentialItemPrice(price);
-  return sender.send({
+  return blockchain.send({
     fromAddress,
     signTx,
     contractName: CONTRACT_PRICING,
@@ -143,7 +142,7 @@ pricing.setPrice = function(fromAddress, signTx, type, name, version, price) {
  */
 pricing.deletePrice = function(fromAddress, signTx, type, name, version) {
   assertAddress(fromAddress);
-  return sender.send({
+  return blockchain.send({
     fromAddress,
     signTx,
     contractName: CONTRACT_PRICING,
